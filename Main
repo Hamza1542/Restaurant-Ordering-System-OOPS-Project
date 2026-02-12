@@ -1,0 +1,263 @@
+public class Bill {
+    private Order order;
+    private final double TAX = 0.15;
+    public Bill(Order order) {
+        this.order = order;
+    }
+    public void generateBill() {
+        double subtotal = 0;
+        System.out.println("\n======= FINAL BILL =======");
+        System.out.println("Order ID: " + order.getId());
+        System.out.println("Customer: " + order.getCustomer().getName());
+        System.out.println("Phone: " + order.getCustomer().getMaskedPhone());
+        System.out.println("----------------------");
+        for (MenuItem item : order.getItems()) {
+            System.out.printf("%-20s $%.2f\n", item.getName(), item.getPrice());
+            subtotal += item.getPrice();
+        }
+        double tax = subtotal * TAX;
+        double total = subtotal + tax;
+        System.out.println("----------------------");
+        System.out.println("Subtotal: $" + subtotal);
+        System.out.println("Tax: $" + tax);
+        System.out.println("TOTAL: $" + total);
+        System.out.println("======================\n");
+    }
+}
+
+public class Customer {
+    private int id;
+    private String name;
+    private String phone;
+    public Customer(int id, String name, String phone) {
+        this.id = id;
+        this.name = name;
+        this.phone = phone;
+    }
+    public String getName() {
+        return name;
+    }
+    public String getMaskedPhone() {
+        if (phone == null && phone.length() <= 10)
+            return "Unknown";
+        return "******" + phone.substring(phone.length() - 4);
+    }
+}
+
+public class MenuItem {
+    private int id;
+    private String name;
+    private double price;
+    private String category;
+    public MenuItem(int id, String name, double price, String category) {
+        this.id = id;
+        this.name = name;
+        this.price = price;
+        this.category = category;
+    }
+    public int getId() {
+        return id;
+    }
+    public String getName() {
+        return name;
+    }
+    public double getPrice() {
+        return price;
+    }
+    public String getCategory() {
+        return category;
+    }
+    public String toString() {
+        return id+" "+name+" $"+price;
+    }
+}
+
+import java.util.*;
+public class Order {
+    private int orderId;
+    private Customer customer;
+    private ArrayList<MenuItem> items;
+    private long orderTime;
+    public Order(int orderId, Customer customer) {
+        this.orderId = orderId;
+        this.customer = customer;
+        this.items = new ArrayList<>();
+        this.orderTime = System.currentTimeMillis();
+    }
+    public void addItem(MenuItem item) {
+        items.add(item);
+    }
+    public ArrayList<MenuItem> getItems() {
+        return items;
+    }
+    public Customer getCustomer() {
+        return customer;
+    }
+    public int getId() {
+        return orderId;
+    }
+    // Automatic Status Logic based on Time Elapsed
+    public String getStatus() {
+        long time = (System.currentTimeMillis() - orderTime) / 1000;
+        if (time < 15)
+            return "PENDING";
+        if (time < 30)
+            return "PREPARING";
+        return "SERVED";
+    }
+}
+
+import java.util.*;
+
+public class Main {
+    static ArrayList<MenuItem> menu = new ArrayList<>();
+    static ArrayList<Order> orders = new ArrayList<>();
+    static int orderCounter = 100;
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        initializeMenu();
+
+        while (true) {
+            System.out.println("\n=== RESTAURANT ORDERING SYSTEM ===");
+            System.out.println("1. View Menu");
+            System.out.println("2. Place Order");
+            System.out.println("3. Track Order");
+            System.out.println("4. Admin Panel");
+            System.out.println("5. Exit");
+            System.out.print("Select Option: ");
+
+            if (!scanner.hasNextInt()) { scanner.next(); continue; }
+            int choice = scanner.nextInt();
+            scanner.nextLine();
+
+            switch (choice) {
+                case 1:
+                    displayMenu();
+                    break;
+                case 2:
+                    placeOrder(scanner);
+                    break;
+                case 3:
+                    trackOrder(scanner);
+                    break;
+                case 4:
+                    adminLogin(scanner);
+                    break;
+                case 5:
+                    System.out.println("System Exiting...");
+                    return;
+                default:
+                    System.out.println("Invalid Choice!");
+            }
+        }
+    }
+
+    private static void initializeMenu() {
+        menu.add(new MenuItem(1, "Spring Rolls", 4.50, "Starters"));
+        menu.add(new MenuItem(2, "Chicken Burger", 8.50, "Mains"));
+        menu.add(new MenuItem(3, "Tikka Pizza", 10.00, "Mains"));
+        menu.add(new MenuItem(4, "Hot Cake", 5.50, "Desserts"));
+        menu.add(new MenuItem(5, "Coca Cola", 2.00, "Drinks"));
+    }
+
+    private static void displayMenu() {
+        System.out.println("\n=== MENU CARD ===");
+        String[] categories = {"Starters", "Mains", "Desserts", "Drinks"};
+        for (String cat : categories) {
+            System.out.println("\n  -- " + cat.toUpperCase() + " --");
+            for (MenuItem item : menu) {
+                if (item.getCategory().equalsIgnoreCase(cat)) {
+                    System.out.println(item);
+                }
+            }
+        }
+    }
+
+    private static void placeOrder(Scanner scanner) {
+        System.out.println("\n--- NEW ORDER ---");
+        System.out.print("Customer Name: ");
+        String name = scanner.nextLine();
+        System.out.print("Phone: ");
+        String phone = scanner.nextLine();
+
+        Customer customer = new Customer(orderCounter, name, phone);
+        Order newOrder = new Order(orderCounter++, customer);
+
+        while (true) {
+            System.out.print("Enter Item ID (0 to Finish): ");
+            int id = scanner.nextInt();
+            if (id == 0) break;
+
+            MenuItem item = findItem(id);
+            if (item != null) {
+                newOrder.addItem(item);
+                System.out.println("Added: " + item.getName());
+            } else {
+                System.out.println("Item Not Found.");
+            }
+        }
+
+        if (!newOrder.getItems().isEmpty()) {
+            orders.add(newOrder);
+            System.out.println("Order Placed! ID: " + newOrder.getId());
+            Bill bill = new Bill(newOrder);
+            bill.generateBill();
+        } else {
+            System.out.println("Order Cancelled.");
+        }
+    }
+
+    private static void trackOrder(Scanner scanner) {
+        System.out.println("\n--- TRACK ORDER ---");
+        System.out.print("Enter Order ID: ");
+        int id = scanner.nextInt();
+
+        Order order = findOrder(id);
+        if (order != null) {
+            System.out.println("Order ID: " + order.getId());
+            System.out.println("Customer: " + order.getCustomer().getName());
+            System.out.println("STATUS:   [" + order.getStatus() + "]");
+        } else {
+            System.out.println("Order Not Found.");
+        }
+    }
+
+    private static void adminLogin(Scanner scanner) {
+        System.out.println("\n--- ADMIN LOGIN ---");
+        System.out.print("Username: ");
+        String user = scanner.next();
+        System.out.print("Password: ");
+        String pass = scanner.next();
+
+        if (user.equals("admin") && pass.equals("admin123")) {
+            System.out.println("Access Granted.");
+            System.out.print("New Item ID: ");
+            int id = scanner.nextInt();
+            scanner.nextLine();
+            System.out.print("Name: ");
+            String name = scanner.nextLine();
+            System.out.print("Price: ");
+            double price = scanner.nextDouble();
+            System.out.print("Category: ");
+            String cat = scanner.next();
+            menu.add(new MenuItem(id, name, price, cat));
+            System.out.println("Menu Updated.");
+        } else {
+            System.out.println("Access Denied.");
+        }
+    }
+
+    private static MenuItem findItem(int id) {
+        for (MenuItem item : menu) if (item.getId() == id) return item;
+        return null;
+    }
+
+    private static Order findOrder(int id) {
+        for (Order o : orders) if (o.getId() == id) return o;
+        return null;
+    }
+}
+
+
+
